@@ -142,9 +142,11 @@ input[type=number]:focus{border-color:var(--green);}
 .bar-wrap{margin-top:24px;width:260px;height:4px;background:#0e180e;border:1px solid var(--green-dim);border-radius:2px;overflow:hidden;}
 .bar{height:100%;width:0%;background:linear-gradient(90deg,#2e8a1e,var(--green));transition:width 0.12s ease;box-shadow:0 0 8px #4a9a2a88;}
 
-/* Info button */
-#info-btn{position:fixed;bottom:14px;right:14px;z-index:45;width:52px;height:52px;border-radius:50%;background:transparent;border:2px solid #000;color:#000;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0.88;transition:color 0.15s,border-color 0.15s,opacity 0.15s;}
-#info-btn:hover{color:#000;border-color:#000;opacity:1;}
+/* Corner buttons (GitHub + Info) */
+#corner-buttons{position:fixed;bottom:14px;right:14px;z-index:45;display:flex;align-items:center;gap:10px;}
+#github-btn,#info-btn{width:52px;height:52px;border-radius:50%;background:transparent;border:2px solid #000;color:#000;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0.88;transition:color 0.15s,border-color 0.15s,opacity 0.15s;text-decoration:none;}
+#github-btn:hover,#info-btn:hover{color:#000;border-color:#000;opacity:1;}
+#info-btn{font-size:28px;}
 
 /* Modal */
 .modal-overlay{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);}
@@ -161,6 +163,8 @@ input[type=number]:focus{border-color:var(--green);}
 .modal-pane{display:none;}
 .modal-pane.active{display:block;}
 .modal-pane p{color:var(--text);font-size:11px;line-height:1.7;letter-spacing:0.5px;margin-bottom:12px;}
+.modal-pane a{color:var(--green);text-decoration:underline;transition:color 0.15s;}
+.modal-pane a:hover{color:#a0e860;}
 .modal-pane ul{color:var(--text);font-size:11px;line-height:1.9;letter-spacing:0.5px;margin:0;padding-left:20px;}
 .modal-pane li{margin-bottom:6px;}
 .modal-pane h3{color:var(--green);font-size:12px;letter-spacing:2px;margin:16px 0 8px;border-bottom:1px dashed var(--green-dk);padding-bottom:4px;}

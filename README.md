@@ -2,6 +2,8 @@
 
 ![Preview](preview.png)
 
+**[Try the demo →](https://codepen.io/Canesugar/pen/NPRNwxo)**
+
 A Minecraft-like procedural world generator with configurable terrain generation. Explore procedurally generated voxel terrain with Perlin or Simplex noise, ridge layers for mountain peaks, and multiple tree types with altitude-based placement.
 
 ## Features
@@ -56,6 +58,11 @@ All settings are in the sidebar:
 - **Noise** — Perlin/Simplex, scale, octaves, lacunarity, persistence, ridge and detail layers
 - **Trees** — Snow/tree/pine/sand lines, tree counts per type, min spacing
 - **Sky** — Time of day, cloud height, speed, amount, size, opacity
+
+## Contributors
+
+- [Canepaper](https://github.com/canepaper)
+- [otse](https://github.com/otse)
 
 ## License
 
