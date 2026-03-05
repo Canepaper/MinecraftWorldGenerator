@@ -59,4 +59,19 @@ All settings are in the sidebar:
 
 ## License
 
-MIT
+Minecraft World Generator License
+
+Copyright (c) 2026 Canepaper
+
+Permission is granted to use, copy, modify, and distribute this software
+for personal, educational, and non-commercial purposes.
+
+Commercial use, including selling the software or incorporating it into
+commercial products, is prohibited without explicit written permission
+from the author.
+
+This software is provided "as is", without warranty of any kind.
+
+No copyright infringement intended.
+
+This project is not affiliated with Mojang Studios or Microsoft.
