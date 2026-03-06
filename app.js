@@ -1141,6 +1141,25 @@ function drawNoisePreview(){
 /* =====================================================
    LIL-GUI
 ===================================================== */
+function updateZoneVis(){
+  var zv=$e('zone-vis'); if(!zv) return;
+  var MAXH=cfg.maxHeight, WATER=cfg.waterLvl;
+  var sandLine=Math.round(WATER*(cfg.sandPct/100));
+  var pineLine=Math.round(MAXH*(cfg.pineline/100));
+  var treeLine=Math.round(MAXH*(cfg.treeline/100));
+  var snowLine=Math.round(MAXH*(cfg.snowPct/100));
+  var pct=function(a,b){ return Math.max(0,((b-a)/MAXH)*100); };
+  var bands=[
+    { el:zv.querySelector('[data-zone=water]'), w:pct(0,WATER) },
+    { el:zv.querySelector('[data-zone=sand]'), w:pct(WATER,sandLine) },
+    { el:zv.querySelector('[data-zone=grass]'), w:pct(sandLine,pineLine) },
+    { el:zv.querySelector('[data-zone=pine]'), w:pct(pineLine,treeLine) },
+    { el:zv.querySelector('[data-zone=trees]'), w:pct(treeLine,snowLine) },
+    { el:zv.querySelector('[data-zone=snow]'), w:pct(snowLine,MAXH) }
+  ];
+  for(var i=0;i<bands.length;i++){ if(bands[i].el) bands[i].el.style.width=bands[i].w+'%'; }
+}
+
 var treeRegenDebounce;
 function scheduleTreeRegenerate(){
   clearTimeout(treeRegenDebounce);
@@ -1155,8 +1174,8 @@ function setupGUI(){
   var chunkOpts = { 16:0, 32:1, 64:2, 96:3, 128:4, 256:5, 512:6, 1024:7 };
   var chunkFolder = gui.addFolder('Chunk');
   chunkFolder.add(cfg, 'chunkIdx', chunkOpts).name('Size').onChange(function(){ currentSeed=cfg.seed; generate(currentSeed); });
-  chunkFolder.add(cfg, 'waterLvl', 2, 60, 1).name('Water Level').onChange(function(){ scheduleNoise(); scheduleTreeRegenerate(); });
-  chunkFolder.add(cfg, 'maxHeight', 16, 128, 1).name('Max Height').onChange(function(){ scheduleNoise(); scheduleTreeRegenerate(); });
+  chunkFolder.add(cfg, 'waterLvl', 2, 60, 1).name('Water Level').onChange(function(){ updateZoneVis(); scheduleNoise(); scheduleTreeRegenerate(); });
+  chunkFolder.add(cfg, 'maxHeight', 16, 128, 1).name('Max Height').onChange(function(){ updateZoneVis(); scheduleNoise(); scheduleTreeRegenerate(); });
   chunkFolder.add(cfg, 'seed', 0, 9999999, 1).name('Seed');
   chunkFolder.add({ gen: function(){ currentSeed=cfg.seed; generate(currentSeed); } }, 'gen').name('Generate');
   chunkFolder.add({ rand: function(){ cfg.seed=currentSeed=Math.floor(Math.random()*9999999); generate(currentSeed); } }, 'rand').name('Randomise Seed');
@@ -1176,10 +1195,15 @@ function setupGUI(){
   noiseFolder.add(cfg, 'exp', 0.3, 3, 0.02).name('Exponent').onChange(scheduleNoise);
 
   var treeFolder = gui.addFolder('Trees');
-  treeFolder.add(cfg, 'snowPct', 40, 98, 1).name('Snow Line %').onChange(function(){ scheduleNoise(); scheduleTreeRegenerate(); });
-  treeFolder.add(cfg, 'treeline', 30, 95, 1).name('Tree Line %').onChange(function(){ scheduleNoise(); scheduleTreeRegenerate(); });
-  treeFolder.add(cfg, 'pineline', 10, 90, 1).name('Pine Line %').onChange(function(){ scheduleNoise(); scheduleTreeRegenerate(); });
-  treeFolder.add(cfg, 'sandPct', 100, 130, 1).name('Sand Line %').onChange(function(){ scheduleNoise(); scheduleTreeRegenerate(); });
+  var zoneVis = document.createElement('div');
+  zoneVis.id = 'zone-vis';
+  zoneVis.innerHTML = '<div class="zband" data-zone="water" style="width:0%">Water</div><div class="zband" data-zone="sand" style="width:0%">Sand</div><div class="zband" data-zone="grass" style="width:0%">Grass</div><div class="zband" data-zone="pine" style="width:0%">Pine</div><div class="zband" data-zone="trees" style="width:0%">Trees</div><div class="zband" data-zone="snow" style="width:0%">Snow</div>';
+  treeFolder.$children.insertBefore(zoneVis, treeFolder.$children.firstChild);
+  updateZoneVis();
+  treeFolder.add(cfg, 'snowPct', 40, 98, 1).name('Snow Line %').onChange(function(){ updateZoneVis(); scheduleNoise(); scheduleTreeRegenerate(); });
+  treeFolder.add(cfg, 'treeline', 30, 95, 1).name('Tree Line %').onChange(function(){ updateZoneVis(); scheduleNoise(); scheduleTreeRegenerate(); });
+  treeFolder.add(cfg, 'pineline', 10, 90, 1).name('Pine Line %').onChange(function(){ updateZoneVis(); scheduleNoise(); scheduleTreeRegenerate(); });
+  treeFolder.add(cfg, 'sandPct', 100, 130, 1).name('Sand Line %').onChange(function(){ updateZoneVis(); scheduleNoise(); scheduleTreeRegenerate(); });
   treeFolder.add(cfg, 'treeOak', 0, 120, 1).name('Oak').onChange(scheduleTreeRegenerate);
   treeFolder.add(cfg, 'treePine', 0, 120, 1).name('Pine').onChange(scheduleTreeRegenerate);
   treeFolder.add(cfg, 'treeAutumn', 0, 120, 1).name('Autumn').onChange(scheduleTreeRegenerate);

@@ -107,9 +107,15 @@ input[type=number]:focus{border-color:var(--green);}
 }
 #zone-vis .zband{
   height:100%;display:flex;align-items:center;justify-content:center;
-  font-size:7px;letter-spacing:0.5px;color:rgba(255,255,255,0.6);
+  font-size:7px;letter-spacing:0.5px;color:rgba(255,255,255,0.9);
   overflow:hidden;white-space:nowrap;transition:width 0.2s;
 }
+#zone-vis .zband[data-zone=water]{background:#3d7bb3;}
+#zone-vis .zband[data-zone=sand]{background:#c9b896;}
+#zone-vis .zband[data-zone=grass]{background:#6dba3e;}
+#zone-vis .zband[data-zone=pine]{background:#3a6b42;}
+#zone-vis .zband[data-zone=trees]{background:#5a9a35;}
+#zone-vis .zband[data-zone=snow]{background:#e8f0f8;color:#2a3a50;}
 
 .divider{font-size:8px;color:var(--text-dim);letter-spacing:2px;margin:2px 0 7px;padding-bottom:4px;border-bottom:1px dashed var(--green-dk);}
 
