@@ -25,6 +25,7 @@ This project is not affiliated with Mojang Studios or Microsoft.
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Minecraft World Generator</title>
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lil-gui@0.20/dist/lil-gui.min.css">
 </head>
 <body>
 <canvas id="sky-canvas"></canvas>
@@ -41,215 +42,13 @@ This project is not affiliated with Mojang Studios or Microsoft.
   <div class="toast-bar-wrap"><div class="toast-bar" id="toast-bar"></div></div>
 </div>
 
-<div id="sidebar">
-  <div id="sb-header">
-    <h1>&#x26CF; MINECRAFT WORLD GENERATOR</h1>
-    <div class="subtitle">TERRAIN CONFIGURATION</div>
-  </div>
-  <div id="sb-body">
-
-    <!-- CHUNK SIZE -->
-    <div class="sb-section">
-      <div class="sb-section-head open" data-sec="chunk"><span>CHUNK SIZE</span><span class="arr">&#9660;</span></div>
-      <div class="sb-section-body open" id="sec-chunk">
-        <div class="badge-row" id="size-badges">
-          <div class="sz-badge" data-idx="0">16</div>
-          <div class="sz-badge" data-idx="1">32</div>
-          <div class="sz-badge" data-idx="2">64</div>
-          <div class="sz-badge" data-idx="3">96</div>
-          <div class="sz-badge" data-idx="4">128</div>
-          <div class="sz-badge active" data-idx="5">256</div>
-          <div class="sz-badge" data-idx="6">512</div>
-          <div class="sz-badge" data-idx="7">1024</div>
-        </div>
-        <div class="ctrl">
-          <label>Water Level <span class="val" id="v-water">36</span></label>
-          <input type="range" id="s-water" min="2" max="60" step="1" value="36">
-        </div>
-        <div class="ctrl">
-          <label>Max Height <span class="val" id="v-maxh">128</span></label>
-          <input type="range" id="s-maxh" min="16" max="128" step="1" value="128">
-        </div>
-        <div class="ctrl">
-          <label>Seed</label>
-          <input type="number" id="s-seed" min="0" max="9999999" value="9043158" placeholder="random...">
-        </div>
-      </div>
-    </div>
-
-    <!-- NOISE -->
-    <div class="sb-section">
-      <div class="sb-section-head open" data-sec="noise"><span>NOISE</span><span class="arr">&#9660;</span></div>
-      <div class="sb-section-body open" id="sec-noise">
-        <canvas id="noise-preview" width="96" height="96"></canvas>
-        <div class="divider">ALGORITHM</div>
-        <div class="pill-row">
-          <div class="pill" id="pill-perlin" data-type="perlin">PERLIN</div>
-          <div class="pill active" id="pill-simplex" data-type="simplex">SIMPLEX</div>
-        </div>
-        <div class="divider">BASE SHAPE</div>
-        <div class="ctrl"><label><span class="lhs">Scale <span class="info-icon">i<span class="tip">Zoom level of the base terrain. Lower = wider, smoother mountains. Higher = tighter, more frequent hills.</span></span></span><span class="val" id="v-scale">0.2</span></label><input type="range" id="s-scale" min="0.1" max="5.0" step="0.05" value="0.2"></div>
-        <div class="ctrl"><label><span class="lhs">Octaves <span class="info-icon">i<span class="tip">Layers of noise stacked together. More octaves = more surface detail and complexity, but slower generation.</span></span></span><span class="val" id="v-oct">3</span></label><input type="range" id="s-oct" min="1" max="10" step="1" value="3"></div>
-        <div class="ctrl"><label><span class="lhs">Lacunarity <span class="info-icon">i<span class="tip">Frequency multiplier between octaves. Higher = finer detail in each successive layer. 2.0 is natural.</span></span></span><span class="val" id="v-lac">2.15</span></label><input type="range" id="s-lac" min="1.2" max="4.0" step="0.05" value="2.15"></div>
-        <div class="ctrl"><label><span class="lhs">Persistence <span class="info-icon">i<span class="tip">Amplitude decay per octave. Lower = smoother terrain. Higher = rougher, jagged landscape.</span></span></span><span class="val" id="v-gain">0.60</span></label><input type="range" id="s-gain" min="0.1" max="0.9" step="0.01" value="0.60"></div>
-        <div class="divider">DETAIL LAYER</div>
-        <div class="ctrl"><label><span class="lhs">Detail Scale <span class="info-icon">i<span class="tip">Scale of fine surface noise overlaid on terrain. Lower = broad texture, higher = tight bumps.</span></span></span><span class="val" id="v-dscale">3.0</span></label><input type="range" id="s-dscale" min="0.1" max="5.0" step="0.05" value="3.0"></div>
-        <div class="ctrl"><label><span class="lhs">Detail Mix <span class="info-icon">i<span class="tip">How strongly the detail layer affects height. 0 = no detail, 0.5 = heavy surface roughness.</span></span></span><span class="val" id="v-dmix">0</span></label><input type="range" id="s-dmix" min="0" max="0.8" step="0.01" value="0"></div>
-        <div class="divider">RIDGE LAYER</div>
-        <div class="ctrl"><label><span class="lhs">Ridge Scale <span class="info-icon">i<span class="tip">Scale of ridge noise used to carve sharp mountain peaks and ridgelines.</span></span></span><span class="val" id="v-rscale">0.35</span></label><input type="range" id="s-rscale" min="0.1" max="4.0" step="0.05" value="0.35"></div>
-        <div class="ctrl"><label><span class="lhs">Ridge Mix <span class="info-icon">i<span class="tip">Strength of ridge shaping. 0 = no ridges, higher = pronounced sharp peaks like real mountain ranges.</span></span></span><span class="val" id="v-rmix">0.52</span></label><input type="range" id="s-rmix" min="0" max="0.6" step="0.01" value="0.52"></div>
-        <div class="divider">SHAPE</div>
-        <div class="ctrl"><label><span class="lhs">Base Mix <span class="info-icon">i<span class="tip">Balance between base shape and detail. Lower = detail dominates, higher = base shape dominates.</span></span></span><span class="val" id="v-basemix">0.54</span></label><input type="range" id="s-basemix" min="0.1" max="1.0" step="0.01" value="0.54"></div>
-        <div class="ctrl"><label><span class="lhs">Exponent <span class="info-icon">i<span class="tip">Power curve applied to final height. Below 1.0 = flatter land with high peaks. Above 1.5 = very flat plains, extreme mountains.</span></span></span><span class="val" id="v-exp">1.96</span></label><input type="range" id="s-exp" min="0.3" max="3.0" step="0.02" value="1.96"></div>
-      </div>
-    </div>
-
-    <!-- TREES -->
-    <div class="sb-section">
-      <div class="sb-section-head open" data-sec="trees"><span>TREES</span><span class="arr">&#9660;</span></div>
-      <div class="sb-section-body open" id="sec-trees">
-
-        <div class="divider">ALTITUDE ZONES (% of max height)</div>
-
-        <!-- Zone visualiser -->
-        <div id="zone-vis">
-          <div class="zband" id="zb-snow"  style="background:#d0e8f0;color:#446;">SNOW</div>
-          <div class="zband" id="zb-sparse" style="background:#6a9060;color:#cec;">SPARSE</div>
-          <div class="zband" id="zb-pine"   style="background:#2e6628;color:#9dc;">PINE</div>
-          <div class="zband" id="zb-all"    style="background:#3d8030;color:#afa;">ALL</div>
-          <div class="zband" id="zb-sand"   style="background:#c8a860;color:#fa8;">SAND</div>
-        </div>
-
-        <div class="ctrl">
-          <label><span class="lhs">Snow line <span class="info-icon">i<span class="tip">Height % above which terrain becomes snow-capped. Trees never grow above this line.</span></span></span><span class="val" id="v-snow">59</span>%</label>
-          <input type="range" id="s-snow" min="40" max="98" step="1" value="59">
-        </div>
-        <div class="ctrl">
-          <label><span class="lhs">Tree line <span class="info-icon">i<span class="tip">Above this height, only sparse pine trees grow. Mimics the real-world alpine treeline where vegetation thins out.</span></span></span><span class="val" id="v-treeline">52</span>%</label>
-          <input type="range" id="s-treeline" min="30" max="95" step="1" value="52">
-        </div>
-        <div class="ctrl">
-          <label><span class="lhs">Pine line <span class="info-icon">i<span class="tip">Above this height, only pine trees can grow (no oak, autumn etc). Below this all tree types are allowed.</span></span></span><span class="val" id="v-pineline">41</span>%</label>
-          <input type="range" id="s-pineline" min="10" max="90" step="1" value="41">
-        </div>
-        <div class="ctrl">
-          <label><span class="lhs">Sand line <span class="info-icon">i<span class="tip">% of water level below which terrain surface becomes sand beach. No trees grow on sand.</span></span></span><span class="val" id="v-sand">108</span>%</label>
-          <input type="range" id="s-sand" min="100" max="130" step="1" value="108">
-        </div>
-
-        <div class="divider">TREES PER CHUNK (0 = off)</div>
-
-        <div class="tree-row">
-          <div class="tree-swatch" style="background:#5d9e3f;"></div>
-          <div class="tree-label">Oak</div>
-          <input type="range" class="tree-slider" id="t-oak" min="0" max="120" step="1" value="40">
-          <div class="tree-val" id="tv-oak">40</div>
-        </div>
-        <div class="tree-row">
-          <div class="tree-swatch" style="background:#1e5c18;"></div>
-          <div class="tree-label">Pine</div>
-          <input type="range" class="tree-slider" id="t-pine" min="0" max="120" step="1" value="35">
-          <div class="tree-val" id="tv-pine">35</div>
-        </div>
-        <div class="tree-row">
-          <div class="tree-swatch" style="background:#cc4444;"></div>
-          <div class="tree-label">Autumn</div>
-          <input type="range" class="tree-slider" id="t-autumn" min="0" max="120" step="1" value="12">
-          <div class="tree-val" id="tv-autumn">12</div>
-        </div>
-        <div class="tree-row">
-          <div class="tree-swatch" style="background:#9b4dd4;"></div>
-          <div class="tree-label">Mystic</div>
-          <input type="range" class="tree-slider" id="t-mystic" min="0" max="120" step="1" value="6">
-          <div class="tree-val" id="tv-mystic">6</div>
-        </div>
-        <div class="tree-row">
-          <div class="tree-swatch" style="background:#d4aa1e;"></div>
-          <div class="tree-label">Golden</div>
-          <input type="range" class="tree-slider" id="t-golden" min="0" max="120" step="1" value="6">
-          <div class="tree-val" id="tv-golden">6</div>
-        </div>
-        <div class="tree-row">
-          <div class="tree-swatch" style="background:#2a9d8f;"></div>
-          <div class="tree-label">Tropical</div>
-          <input type="range" class="tree-slider" id="t-tropical" min="0" max="120" step="1" value="0">
-          <div class="tree-val" id="tv-tropical">0</div>
-        </div>
-
-        <div class="ctrl" style="margin-top:4px;">
-          <label><span class="lhs">Min Spacing <span class="info-icon">i<span class="tip">Minimum block distance between any two tree trunks. Higher = more open forest, lower = denser canopy.</span></span></span><span class="val" id="v-tspacing">4</span></label>
-          <input type="range" id="s-tspacing" min="2" max="16" step="1" value="4">
-        </div>
-        <div class="ctrl">
-          <label><span class="lhs">Sparse density <span class="info-icon">i<span class="tip">In the sparse zone (between pine line and snow line), what % of tree slots actually get a tree. 0 = bare, 100 = full pine forest near treeline.</span></span></span><span class="val" id="v-sparsedens">20</span>%</label>
-          <input type="range" id="s-sparsedens" min="0" max="100" step="1" value="20">
-        </div>
-      </div>
-    </div>
-
-    <!-- SKY & TIME OF DAY -->
-    <div class="sb-section">
-      <div class="sb-section-head open" data-sec="sky"><span>SKY &amp; TIME OF DAY</span><span class="arr">&#9660;</span></div>
-      <div class="sb-section-body open" id="sec-sky">
-        <div class="divider">TIME OF DAY</div>
-        <!-- Visual clock arc -->
-        <div id="tod-arc-wrap">
-          <canvas id="tod-arc" width="200" height="70"></canvas>
-        </div>
-        <div class="ctrl">
-          <label><span class="lhs">Time <span class="info-icon">i<span class="tip">0 = midnight, 6 = dawn, 12 = noon, 18 = dusk, 24 = midnight. Changes sky colour, light angle, stars and sun/moon position.</span></span></span><span class="val" id="v-tod">12.0</span>h</label>
-          <input type="range" id="s-tod" min="0" max="24" step="0.25" value="12">
-        </div>
-        <div class="divider">CLOUDS</div>
-        <div class="ctrl">
-          <label><span class="lhs">Height <span class="info-icon">i<span class="tip">Y level of the flat cloud layer, like real Minecraft clouds.</span></span></span><span class="val" id="v-cloudh">120</span></label>
-          <input type="range" id="s-cloudh" min="80" max="300" step="5" value="120">
-        </div>
-        <div class="ctrl">
-          <label><span class="lhs">Speed <span class="info-icon">i<span class="tip">How fast clouds drift. 0 = static.</span></span></span><span class="val" id="v-cloudspeed">0.3</span></label>
-          <input type="range" id="s-cloudspeed" min="0" max="5" step="0.1" value="0.3">
-        </div>
-        <div class="ctrl">
-          <label><span class="lhs">Amount <span class="info-icon">i<span class="tip">Number of cloud formations. More = overcast.</span></span></span><span class="val" id="v-cloudamt">5</span></label>
-          <input type="range" id="s-cloudamt" min="0" max="60" step="1" value="5">
-        </div>
-        <div class="ctrl">
-          <label><span class="lhs">Size <span class="info-icon">i<span class="tip">Width of each cloud formation in blocks.</span></span></span><span class="val" id="v-cloudsize">37</span></label>
-          <input type="range" id="s-cloudsize" min="4" max="60" step="1" value="37">
-        </div>
-        <div class="ctrl">
-          <label><span class="lhs">Opacity <span class="info-icon">i<span class="tip">Cloud transparency.</span></span></span><span class="val" id="v-cloudopa">0.88</span></label>
-          <input type="range" id="s-cloudopa" min="0.1" max="1.0" step="0.02" value="0.88">
-        </div>
-      </div>
-    </div>
-
-    <!-- CLOUDS old section removed, merged into SKY -->
-
-    <!-- BIOME -->
-    <div class="sb-section">
-      <div class="sb-section-head" data-sec="biome"><span>BIOME / STYLE</span><span class="arr">&#9660;</span></div>
-      <div class="sb-section-body" id="sec-biome">
-        <div class="cb-row"><input type="checkbox" id="cb-water" checked><label for="cb-water" style="cursor:pointer">Show Water</label></div>
-        <div class="cb-row"><input type="checkbox" id="cb-wireframe"><label for="cb-wireframe" style="cursor:pointer">Wireframe</label></div>
-        <div class="cb-row"><input type="checkbox" id="cb-autorotate" checked><label for="cb-autorotate" style="cursor:pointer">Auto-rotate</label></div>
-      </div>
-    </div>
-
-  </div><!-- /sb-body -->
-  <div id="sb-footer">
-    <button class="btn primary" id="btn-apply">&#x25B6;&nbsp; GENERATE</button>
-    <button class="btn" id="btn-rand">&#x21BA;&nbsp; RANDOMISE SEED</button>
-    <button class="btn" id="btn-reset">&#x21C4;&nbsp; RESET DEFAULTS</button>
-  </div>
-</div>
-
-<div id="sb-toggle">&#x276E;</div>
-
 <div id="hud">
+  <div class="hud-pill"><span id="hud-fps">0</span> FPS</div>
+  <div class="hud-pill">Render: <span id="hud-render-time">—</span></div>
   <div class="hud-pill"><span id="hud-size">64</span>x<span id="hud-size2">64</span>&nbsp;&nbsp;seed&nbsp;<span id="hud-seed">-</span></div>
-  <div class="hud-pill" style="font-size:10px">L-drag orbit &middot; R-drag pan &middot; scroll zoom</div>
-  <div class="hud-pill" style="font-size:10px">Press <kbd>i</kbd> to toggle info</div>
+  <div class="hud-pill"><span id="hud-blocks">—</span> blocks &middot; <span id="hud-chunks">—</span> chunks</div>
+  <div class="hud-pill" style="font-size:12px">L-drag orbit &middot; R-drag pan &middot; scroll zoom</div>
+  <div class="hud-pill" style="font-size:12px">Press <kbd>i</kbd> to toggle info</div>
 </div>
 
 <div id="corner-buttons">
@@ -269,7 +68,7 @@ This project is not affiliated with Mojang Studios or Microsoft.
     <div class="modal-content">
       <div id="tab-about" class="modal-pane active">
         <p>A procedural Minecraft-style chunk viewer with configurable terrain generation. Uses Perlin or Simplex noise for height maps, ridge layers for mountain peaks, and supports multiple tree types with altitude-based placement.</p>
-        <p>Built with Three.js. Adjust noise parameters, tree lines, and cloud settings in the sidebar.</p>
+        <p>Built with Three.js. Adjust noise parameters, tree lines, and cloud settings in the GUI.</p>
         <p>If you're here from CodePen, you can visit <a href="https://github.com/Canepaper/MinecraftWorldGenerator" target="_blank" rel="noopener">the GitHub repo</a> and feel free to contribute there if you'd like.</p>
       </div>
       <div id="tab-features" class="modal-pane">
@@ -280,7 +79,7 @@ This project is not affiliated with Mojang Studios or Microsoft.
         <h3>Sky &amp; Time</h3>
         <p>Dynamic day/night cycle with sun and moon arcs. Stars at night. Configurable cloud layer with drift, amount, size, and opacity.</p>
         <h3>Controls</h3>
-        <p>Left-drag to orbit, right-drag to pan, scroll to zoom. Tree settings auto-update the map. Sidebar can be collapsed.</p>
+        <p>Left-drag to orbit, right-drag to pan, scroll to zoom. Tree settings auto-update the map.</p>
       </div>
       <div id="tab-contributors" class="modal-pane">
         <div id="contributors-list" class="contributors-grid"></div>
@@ -290,6 +89,7 @@ This project is not affiliated with Mojang Studios or Microsoft.
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lil-gui@0.20/dist/lil-gui.umd.min.js"></script>
 <script src="contributors/contributors.js"></script>
 <script src="app.js"></script>
 </body>

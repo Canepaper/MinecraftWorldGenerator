@@ -11,11 +11,12 @@ A Minecraft-like procedural world generator with configurable terrain generation
 - **Terrain** — Procedural height maps with Perlin or Simplex noise. Configurable scale, octaves, lacunarity, persistence, and ridge layers for sharp mountain peaks.
 - **Trees** — Six tree types (Oak, Pine, Autumn, Mystic, Golden, Tropical) with altitude-based placement. Snow line, tree line, and pine line control where each type grows.
 - **Sky & Time** — Dynamic day/night cycle with sun and moon arcs, stars at night, and a configurable cloud layer.
-- **Controls** — Left-drag to orbit, right-drag to pan, scroll to zoom. Tree settings auto-update the map. Press `i` to toggle the info modal.
+- **Controls** — Left-drag to orbit, right-drag to pan, scroll to zoom. lil-gui panel for all settings. Press `i` to toggle the info modal.
 
 ## Tech Stack
 
 - **Three.js** (r128) — 3D rendering
+- **lil-gui** — Parameter controls
 - Vanilla JavaScript, HTML, CSS
 
 ## Getting Started
@@ -52,7 +53,7 @@ minecraft-world-generator/
 
 ## Configuration
 
-All settings are in the sidebar:
+All settings are in the lil-gui panel (top-right):
 
 - **Chunk Size** — 16 to 1024 blocks
 - **Noise** — Perlin/Simplex, scale, octaves, lacunarity, persistence, ridge and detail layers

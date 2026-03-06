@@ -8,19 +8,21 @@ var CHUNK_SIZES = [16,32,64,96,128,256,512,1024];
 var TILE = 64; // sub-tile size for streaming mesh build
 
 var DEFAULTS = {
-  chunkIdx:5, waterLvl:36, maxHeight:128,
+  chunkIdx:5, waterLvl:36, maxHeight:128, seed:9043158,
   noiseType:'simplex',
   scale:0.2, oct:3, lac:2.15, gain:0.60,
   dscale:3.0, dmix:0, rscale:0.35, rmix:0.52, basemix:0.54, exp:1.96,
   snowPct:59, treeline:52, pineline:41, sandPct:108,
-  showWater:true, wireframe:false, autoRotate:true,
+  showWater:true, wireframe:false, autoRotate:true, useWorkers:true, surfaceOnly:false,
   tSpacing:4, sparseDens:20,
   treeOak:40, treePine:35, treeAutumn:12, treeMystic:6, treeGolden:6, treeTropical:0,
   cloudH:120, cloudSpeed:0.3, cloudAmt:5, cloudSize:37, cloudOpa:0.88,
   tod:12,
 };
 var cfg = Object.assign({}, DEFAULTS);
-var currentSeed = 9043158;
+var currentSeed = cfg.seed;
+var renderTimeMs = 0;
+var fps = 0;
 
 /* =====================================================
    HELPERS
@@ -420,22 +422,32 @@ function genWorld(seed){
   // colMap[col] = Int16Array of [y, typeId, y, typeId, ...]  sorted ascending y
   var colMap=new Array(CHUNK*CHUNK);
 
+  var surfaceOnly = !!cfg.surfaceOnly;
   for(var z=0;z<CHUNK;z++) for(var x=0;x<CHUNK;x++){
     var h=heights[z*CHUNK+x];
     var col=[];
-    for(var y=0;y<=h;y++){
+    if(surfaceOnly){
       var type;
-      if(y===h){
-        if(h<=sandLine)      type='sand';
-        else if(h>=snowLine) type='snow';
-        else                 type='grass';
-      } else if(y>=h-3){    type=(h<=sandLine+1)?'sand':'dirt'; }
-      else if(y>=h-10){     type='stone'; }
-      else{                 type='deep'; }
-      col.push(y, getTypeId(type));
-    }
-    if(cfg.showWater && h<WATER){
-      for(var y=h+1;y<=WATER;y++) col.push(y, getTypeId('water'));
+      if(h<=sandLine)      type='sand';
+      else if(h>=snowLine) type='snow';
+      else                 type='grass';
+      col.push(h, getTypeId(type));
+      if(cfg.showWater && h<WATER) col.push(WATER, getTypeId('water'));
+    } else {
+      for(var y=0;y<=h;y++){
+        var type;
+        if(y===h){
+          if(h<=sandLine)      type='sand';
+          else if(h>=snowLine) type='snow';
+          else                 type='grass';
+        } else if(y>=h-3){    type=(h<=sandLine+1)?'sand':'dirt'; }
+        else if(y>=h-10){     type='stone'; }
+        else{                 type='deep'; }
+        col.push(y, getTypeId(type));
+      }
+      if(cfg.showWater && h<WATER){
+        for(var y=h+1;y<=WATER;y++) col.push(y, getTypeId('water'));
+      }
     }
     colMap[x+z*CHUNK]=col;
   }
@@ -521,6 +533,10 @@ function buildTileMesh(colMap, typeNames, getBlock, CHUNK, tileX, tileZ, tileW, 
     }
   }
 
+  return bucketsToGroup(buckets);
+}
+
+function bucketsToGroup(buckets){
   var group=new THREE.Group();
   Object.keys(buckets).forEach(function(tk){
     var b=buckets[tk]; if(!b.pos.length) return;
@@ -919,6 +935,7 @@ function updateCloudOpacity(){
 
 var cloudOffset=0;
 var lastCloudTime=performance.now();
+var frameCount=0, lastFpsTime=performance.now();
 
 /* =====================================================
    ORBIT CONTROLS
@@ -929,7 +946,7 @@ cv.addEventListener('contextmenu',function(e){ e.preventDefault(); });
 window.addEventListener('mouseup',function(){ orb.ldown=orb.rdown=false; });
 window.addEventListener('mousemove',function(e){
   var dx=e.clientX-orb.mx, dy=e.clientY-orb.my; orb.mx=e.clientX; orb.my=e.clientY;
-  if(orb.ldown){ cfg.autoRotate=false; var cb=$e('cb-autorotate'); if(cb) cb.checked=false; orb.theta-=dx*0.005; orb.phi=Math.max(0.06,Math.min(Math.PI/2-0.04,orb.phi-dy*0.005)); }
+  if(orb.ldown){ cfg.autoRotate=false; if(autoRotateController) autoRotateController.updateDisplay(); orb.theta-=dx*0.005; orb.phi=Math.max(0.06,Math.min(Math.PI/2-0.04,orb.phi-dy*0.005)); }
   if(orb.rdown){ var r=new THREE.Vector3(-Math.cos(orb.theta),0,Math.sin(orb.theta)); orb.target.addScaledVector(r,dx*0.14); orb.target.y=Math.max(-2,Math.min(200,orb.target.y-dy*0.14)); }
 });
 cv.addEventListener('wheel',function(e){ orb.radius=Math.max(12,Math.min(700,orb.radius+e.deltaY*0.18)); },{passive:true});
@@ -939,7 +956,7 @@ cv.addEventListener('touchstart',function(e){ orb.touchActive=true; lt=Array.fro
 cv.addEventListener('touchend',function(e){ if(e.touches.length===0) orb.touchActive=false; },{passive:true});
 cv.addEventListener('touchcancel',function(e){ if(e.touches.length===0) orb.touchActive=false; },{passive:true});
 cv.addEventListener('touchmove',function(e){
-  if(e.touches.length===1&&lt.length>=1){ cfg.autoRotate=false; var cb=$e('cb-autorotate'); if(cb) cb.checked=false; orb.theta-=(e.touches[0].clientX-lt[0].clientX)*0.006; orb.phi=Math.max(0.06,Math.min(Math.PI/2-0.04,orb.phi-(e.touches[0].clientY-lt[0].clientY)*0.006)); }
+  if(e.touches.length===1&&lt.length>=1){ cfg.autoRotate=false; if(autoRotateController) autoRotateController.updateDisplay(); orb.theta-=(e.touches[0].clientX-lt[0].clientX)*0.006; orb.phi=Math.max(0.06,Math.min(Math.PI/2-0.04,orb.phi-(e.touches[0].clientY-lt[0].clientY)*0.006)); }
   else if(e.touches.length===2&&lt.length>=2){ var d0=Math.hypot(lt[0].clientX-lt[1].clientX,lt[0].clientY-lt[1].clientY); var d1=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); orb.radius=Math.max(12,Math.min(700,orb.radius-(d1-d0)*0.3)); }
   lt=Array.from(e.touches);
 },{passive:true});
@@ -957,6 +974,7 @@ async function generate(seed, opts){
   renderCancelToken.id++;
   var myToken = renderCancelToken.id;
   var skipLoading = opts.skipLoading;
+  var renderStart = performance.now();
 
   var loading=$e('loading');
   if(!skipLoading){ loading.style.opacity='1'; loading.style.pointerEvents='all'; }
@@ -1009,35 +1027,91 @@ async function generate(seed, opts){
   buildClouds(); // rebuild with correct world size
   applyTOD();   // re-sync sky/lighting
 
-  // Stream remaining tiles — one per animation frame via sleep(0)
+  // Stream remaining tiles
   if(tiles.length>1){
     var toast=$e('render-toast'), tbar=$e('toast-bar'), ttxt=$e('toast-text');
     toast.style.display='block'; toast.style.opacity='1';
-    for(var ti=1;ti<tiles.length;ti++){
-      if(renderCancelToken.id!==myToken){ toast.style.display='none'; return; }
-      var t=tiles[ti];
-      var mesh=buildTileMesh(colMap,typeNames,getBlock,CHUNK,t.tx,t.tz,t.tw,t.th);
-      worldGroup.add(mesh);
-      var pct=Math.round((ti+1)/tiles.length*100);
-      ttxt.textContent='STREAMING  '+pct+'%  ('+( ti+1)+' / '+tiles.length+' tiles)';
-      tbar.style.width=pct+'%';
-      await sleep(0); // yield — lets the render loop run between each tile
+
+    if(cfg.useWorkers){
+      // Parallel build with worker pool
+      var numWorkers=Math.min(navigator.hardwareConcurrency||4, tiles.length-1);
+      var workerPool=[], nextTile=1, pending=0, doneCount=0;
+      for(var wi=0;wi<numWorkers;wi++){
+        try{
+          var w=new Worker('scripts/mesh-worker.js');
+          w.onmessage=function(msg){
+            var r=msg.data;
+            worldGroup.add(bucketsToGroup(r.buckets));
+            doneCount++;
+            var pct=Math.round((doneCount+1)/tiles.length*100);
+            ttxt.textContent='WORKERS  '+pct+'%  ('+doneCount+' / '+(tiles.length-1)+' tiles)';
+            tbar.style.width=pct+'%';
+            pending--;
+            if(nextTile<tiles.length){
+              var t=tiles[nextTile], tid=nextTile;
+              this.postMessage({id:tid,colMap:colMap,typeNames:typeNames,CHUNK:CHUNK,tileX:t.tx,tileZ:t.tz,tileW:t.tw,tileH:t.th});
+              nextTile++; pending++;
+            }
+            if(pending===0){
+              renderTimeMs=Math.round(performance.now()-renderStart);
+              var hr=$e('hud-render-time'); if(hr) hr.textContent=(renderTimeMs/1000).toFixed(2)+'s';
+              toast.style.transition='opacity 0.6s'; toast.style.opacity='0';
+              setTimeout(function(){ toast.style.display='none'; toast.style.opacity='1'; toast.style.transition=''; }, 650);
+              for(var wi2=0;wi2<workerPool.length;wi2++) workerPool[wi2].terminate();
+            }
+          };
+          workerPool.push(w);
+          var t=tiles[nextTile];
+          w.postMessage({id:nextTile,colMap:colMap,typeNames:typeNames,CHUNK:CHUNK,tileX:t.tx,tileZ:t.tz,tileW:t.tw,tileH:t.th});
+          nextTile++; pending++;
+        }catch(err){ cfg.useWorkers=false; break; }
+      }
+      if(!cfg.useWorkers){
+        for(var wi2=0;wi2<workerPool.length;wi2++) workerPool[wi2].terminate();
+      }
     }
-    toast.style.transition='opacity 0.6s';
-    toast.style.opacity='0';
-    await sleep(650);
-    toast.style.display='none'; toast.style.opacity='1'; toast.style.transition='';
+    if(!cfg.useWorkers){
+      // Sequential build (original behavior)
+      for(var ti=1;ti<tiles.length;ti++){
+        if(renderCancelToken.id!==myToken){ toast.style.display='none'; return; }
+        var t=tiles[ti];
+        var mesh=buildTileMesh(colMap,typeNames,getBlock,CHUNK,t.tx,t.tz,t.tw,t.th);
+        worldGroup.add(mesh);
+        var pct=Math.round((ti+1)/tiles.length*100);
+        ttxt.textContent='STREAMING  '+pct+'%  ('+(ti+1)+' / '+tiles.length+' tiles)';
+        tbar.style.width=pct+'%';
+        await sleep(0);
+      }
+      toast.style.transition='opacity 0.6s';
+      toast.style.opacity='0';
+      await sleep(650);
+      toast.style.display='none'; toast.style.opacity='1'; toast.style.transition='';
+    }
   }
 
+  if(!cfg.useWorkers||tiles.length<=1){
+    renderTimeMs=Math.round(performance.now()-renderStart);
+    var hudRender=$e('hud-render-time');
+    if(hudRender) hudRender.textContent=(renderTimeMs/1000).toFixed(2)+'s';
+  }
+  var blockCount=0; for(var ci=0;ci<colMap.length;ci++) blockCount+=colMap[ci].length>>1;
+  var hb=$e('hud-blocks'); if(hb) hb.textContent=blockCount.toLocaleString();
+  var hc=$e('hud-chunks'); if(hc) hc.textContent=tiles.length;
   drawNoisePreview();
 }
 
 /* =====================================================
-   NOISE PREVIEW
+   NOISE PREVIEW (minimap)
 ===================================================== */
+var noiseDebounce;
+function scheduleNoise(){ clearTimeout(noiseDebounce); noiseDebounce=setTimeout(drawNoisePreview,120); }
+
 function drawNoisePreview(){
-  var canvas=$e('noise-preview'), ctx=canvas.getContext('2d');
-  var W=canvas.width, H=canvas.height;
+  var canvas=$e('noise-preview');
+  if(!canvas) return;
+  var ctx=canvas.getContext('2d');
+  var W=Math.max(1, canvas.clientWidth||220), H=Math.max(1, canvas.clientHeight||220);
+  if(canvas.width!==W||canvas.height!==H){ canvas.width=W; canvas.height=H; }
   var p1=makeNoise(currentSeed), p2=makeNoise(currentSeed+7331), p3=makeNoise(currentSeed+31337);
   var img=ctx.createImageData(W,H);
   var MAXH=cfg.maxHeight, WATER=cfg.waterLvl;
@@ -1065,187 +1139,84 @@ function drawNoisePreview(){
 }
 
 /* =====================================================
-   ZONE VISUALISER
+   LIL-GUI
 ===================================================== */
-function updateZoneVis(){
-  var snow  = cfg.snowPct;
-  var tree  = Math.min(cfg.treeline, cfg.snowPct-1);
-  var pine  = Math.min(cfg.pineline, cfg.treeline-1);
-  var sand  = cfg.sandPct;
-
-  // Widths as % of the bar:
-  // from 0%→sand zone bottom → sand→pine → pine→sparse → sparse→snow → snow→100
-  // simplified: just show relative band widths
-  var snowW  = 100 - snow;
-  var sparseW= snow - tree;
-  var pineW  = tree - pine;
-  var allW   = pine;
-  var sandW  = Math.max(2, 8); // always show a small sand sliver
-
-  var total = snowW+sparseW+pineW+allW+sandW;
-  function pct(v){ return (v/total*100).toFixed(1)+'%'; }
-
-  $e('zb-snow').style.width   = pct(snowW);
-  $e('zb-sparse').style.width = pct(sparseW);
-  $e('zb-pine').style.width   = pct(pineW);
-  $e('zb-all').style.width    = pct(allW);
-  $e('zb-sand').style.width   = pct(sandW);
-}
-
-/* =====================================================
-   SIDEBAR WIRING
-===================================================== */
-function updateSliderGrad(el){
-  var mn=parseFloat(el.min), mx=parseFloat(el.max), v=parseFloat(el.value);
-  el.style.setProperty('--pct',((v-mn)/(mx-mn)*100).toFixed(1)+'%');
-}
-function bindSlider(id,prop,fmt,extra){
-  var el=$e(id), vEl=$e('v-'+id.replace('s-',''));
-  el.addEventListener('input',function(){
-    var v=parseFloat(el.value); cfg[prop]=v;
-    if(vEl) vEl.textContent=fmt?fmt(v):v;
-    updateSliderGrad(el); if(extra) extra(v);
-  });
-  updateSliderGrad(el);
-}
-
-var noiseDebounce;
-function scheduleNoise(){ clearTimeout(noiseDebounce); noiseDebounce=setTimeout(drawNoisePreview,120); }
-function scheduleZoneAndNoise(){ updateZoneVis(); scheduleNoise(); }
-
 var treeRegenDebounce;
 function scheduleTreeRegenerate(){
   clearTimeout(treeRegenDebounce);
-  treeRegenDebounce=setTimeout(function(){
-    var v=parseInt($e('s-seed').value); if(!isNaN(v)&&v>=0) currentSeed=v;
-    generate(currentSeed, {skipLoading:true});
-  }, 400);
+  treeRegenDebounce=setTimeout(function(){ currentSeed=cfg.seed; generate(currentSeed, {skipLoading:true}); }, 400);
 }
 
-bindSlider('s-water',  'waterLvl', null, scheduleZoneAndNoise);
-bindSlider('s-maxh',   'maxHeight',null, scheduleZoneAndNoise);
-bindSlider('s-scale',  'scale',    function(v){return v.toFixed(1);}, scheduleNoise);
-bindSlider('s-oct',    'oct',      null, scheduleNoise);
-bindSlider('s-lac',    'lac',      function(v){return v.toFixed(2);}, scheduleNoise);
-bindSlider('s-gain',   'gain',     function(v){return v.toFixed(2);}, scheduleNoise);
-bindSlider('s-dscale', 'dscale',   function(v){return v.toFixed(2);}, scheduleNoise);
-bindSlider('s-dmix',   'dmix',     function(v){return v.toFixed(2);}, scheduleNoise);
-bindSlider('s-rscale', 'rscale',   function(v){return v.toFixed(2);}, scheduleNoise);
-bindSlider('s-rmix',   'rmix',     function(v){return v.toFixed(2);}, scheduleNoise);
-bindSlider('s-basemix','basemix',  function(v){return v.toFixed(2);}, scheduleNoise);
-bindSlider('s-exp',    'exp',      function(v){return v.toFixed(2);}, scheduleNoise);
-bindSlider('s-snow',   'snowPct',  null, function(){ scheduleZoneAndNoise(); scheduleTreeRegenerate(); });
-bindSlider('s-treeline','treeline',null, function(){ scheduleZoneAndNoise(); scheduleTreeRegenerate(); });
-bindSlider('s-pineline','pineline',null, function(){ scheduleZoneAndNoise(); scheduleTreeRegenerate(); });
-bindSlider('s-sand',   'sandPct',  null, function(){ scheduleZoneAndNoise(); scheduleTreeRegenerate(); });
-bindSlider('s-tspacing','tSpacing',null, scheduleTreeRegenerate);
-bindSlider('s-sparsedens','sparseDens',null, scheduleTreeRegenerate);
+var gui, autoRotateController;
+function setupGUI(){
+  if(gui) gui.destroy();
+  gui = new lil.GUI({ title: 'Minecraft World Generator' });
 
-// Cloud sliders
-bindSlider('s-cloudh',     'cloudH',     null, buildClouds);
-bindSlider('s-cloudspeed', 'cloudSpeed', function(v){return v.toFixed(1);});
-bindSlider('s-cloudamt',   'cloudAmt',   null, buildClouds);
-bindSlider('s-cloudsize',  'cloudSize',  null, buildClouds);
-bindSlider('s-cloudopa',   'cloudOpa',   function(v){return v.toFixed(2);}, updateCloudOpacity);
+  var chunkOpts = { 16:0, 32:1, 64:2, 96:3, 128:4, 256:5, 512:6, 1024:7 };
+  var chunkFolder = gui.addFolder('Chunk');
+  chunkFolder.add(cfg, 'chunkIdx', chunkOpts).name('Size').onChange(function(){ currentSeed=cfg.seed; generate(currentSeed); });
+  chunkFolder.add(cfg, 'waterLvl', 2, 60, 1).name('Water Level').onChange(function(){ scheduleNoise(); scheduleTreeRegenerate(); });
+  chunkFolder.add(cfg, 'maxHeight', 16, 128, 1).name('Max Height').onChange(function(){ scheduleNoise(); scheduleTreeRegenerate(); });
+  chunkFolder.add(cfg, 'seed', 0, 9999999, 1).name('Seed');
+  chunkFolder.add({ gen: function(){ currentSeed=cfg.seed; generate(currentSeed); } }, 'gen').name('Generate');
+  chunkFolder.add({ rand: function(){ cfg.seed=currentSeed=Math.floor(Math.random()*9999999); generate(currentSeed); } }, 'rand').name('Randomise Seed');
+  chunkFolder.add({ reset: function(){ Object.assign(cfg,DEFAULTS); currentSeed=cfg.seed; setupGUI(); buildClouds(); applyTOD(); generate(currentSeed); } }, 'reset').name('Reset Defaults');
 
-// Time of day slider
-(function(){
-  var el=$e('s-tod'), vEl=$e('v-tod');
-  if(!el) return;
-  el.addEventListener('input',function(){
-    cfg.tod=parseFloat(el.value);
-    vEl.textContent=cfg.tod.toFixed(1);
-    updateSliderGrad(el);
-    applyTOD();
+  var noiseFolder = gui.addFolder('Noise');
+  noiseFolder.add(cfg, 'noiseType', { Perlin: 'perlin', Simplex: 'simplex' }).name('Algorithm').onChange(scheduleNoise);
+  noiseFolder.add(cfg, 'scale', 0.1, 5, 0.05).name('Scale').onChange(scheduleNoise);
+  noiseFolder.add(cfg, 'oct', 1, 10, 1).name('Octaves').onChange(scheduleNoise);
+  noiseFolder.add(cfg, 'lac', 1.2, 4, 0.05).name('Lacunarity').onChange(scheduleNoise);
+  noiseFolder.add(cfg, 'gain', 0.1, 0.9, 0.01).name('Persistence').onChange(scheduleNoise);
+  noiseFolder.add(cfg, 'dscale', 0.1, 5, 0.05).name('Detail Scale').onChange(scheduleNoise);
+  noiseFolder.add(cfg, 'dmix', 0, 0.8, 0.01).name('Detail Mix').onChange(scheduleNoise);
+  noiseFolder.add(cfg, 'rscale', 0.1, 4, 0.05).name('Ridge Scale').onChange(scheduleNoise);
+  noiseFolder.add(cfg, 'rmix', 0, 0.6, 0.01).name('Ridge Mix').onChange(scheduleNoise);
+  noiseFolder.add(cfg, 'basemix', 0.1, 1, 0.01).name('Base Mix').onChange(scheduleNoise);
+  noiseFolder.add(cfg, 'exp', 0.3, 3, 0.02).name('Exponent').onChange(scheduleNoise);
+
+  var treeFolder = gui.addFolder('Trees');
+  treeFolder.add(cfg, 'snowPct', 40, 98, 1).name('Snow Line %').onChange(function(){ scheduleNoise(); scheduleTreeRegenerate(); });
+  treeFolder.add(cfg, 'treeline', 30, 95, 1).name('Tree Line %').onChange(function(){ scheduleNoise(); scheduleTreeRegenerate(); });
+  treeFolder.add(cfg, 'pineline', 10, 90, 1).name('Pine Line %').onChange(function(){ scheduleNoise(); scheduleTreeRegenerate(); });
+  treeFolder.add(cfg, 'sandPct', 100, 130, 1).name('Sand Line %').onChange(function(){ scheduleNoise(); scheduleTreeRegenerate(); });
+  treeFolder.add(cfg, 'treeOak', 0, 120, 1).name('Oak').onChange(scheduleTreeRegenerate);
+  treeFolder.add(cfg, 'treePine', 0, 120, 1).name('Pine').onChange(scheduleTreeRegenerate);
+  treeFolder.add(cfg, 'treeAutumn', 0, 120, 1).name('Autumn').onChange(scheduleTreeRegenerate);
+  treeFolder.add(cfg, 'treeMystic', 0, 120, 1).name('Mystic').onChange(scheduleTreeRegenerate);
+  treeFolder.add(cfg, 'treeGolden', 0, 120, 1).name('Golden').onChange(scheduleTreeRegenerate);
+  treeFolder.add(cfg, 'treeTropical', 0, 120, 1).name('Tropical').onChange(scheduleTreeRegenerate);
+  treeFolder.add(cfg, 'tSpacing', 2, 16, 1).name('Min Spacing').onChange(scheduleTreeRegenerate);
+  treeFolder.add(cfg, 'sparseDens', 0, 100, 1).name('Sparse Density %').onChange(scheduleTreeRegenerate);
+
+  var skyFolder = gui.addFolder('Sky & Clouds');
+  skyFolder.add(cfg, 'tod', 0, 24, 0.25).name('Time of Day').onChange(applyTOD);
+  skyFolder.add(cfg, 'cloudH', 80, 300, 5).name('Cloud Height').onChange(buildClouds);
+  skyFolder.add(cfg, 'cloudSpeed', 0, 5, 0.1).name('Cloud Speed');
+  skyFolder.add(cfg, 'cloudAmt', 0, 60, 1).name('Cloud Amount').onChange(buildClouds);
+  skyFolder.add(cfg, 'cloudSize', 4, 60, 1).name('Cloud Size').onChange(buildClouds);
+  skyFolder.add(cfg, 'cloudOpa', 0.1, 1, 0.02).name('Cloud Opacity').onChange(updateCloudOpacity);
+  skyFolder.close();
+
+  var optionsFolder = gui.addFolder('Options');
+  optionsFolder.add(cfg, 'showWater').name('Show Water');
+  optionsFolder.add(cfg, 'surfaceOnly').name('Surface Only').onChange(function(){ currentSeed=cfg.seed; generate(currentSeed); });
+  optionsFolder.add(cfg, 'wireframe').name('Wireframe').onChange(function(){
+    if(worldGroup) worldGroup.traverse(function(o){ if(o.material) o.material.wireframe=cfg.wireframe; });
   });
-  updateSliderGrad(el);
-})();
+  autoRotateController = optionsFolder.add(cfg, 'autoRotate').name('Auto-rotate');
+  optionsFolder.add(cfg, 'useWorkers').name('Use Workers');
+  optionsFolder.close();
 
-// Tree count sliders
-var treeSliderMap={oak:'treeOak',pine:'treePine',autumn:'treeAutumn',mystic:'treeMystic',golden:'treeGolden',tropical:'treeTropical'};
-Object.keys(treeSliderMap).forEach(function(k){
-  var el=$e('t-'+k), vEl=$e('tv-'+k);
-  el.addEventListener('input',function(){ cfg[treeSliderMap[k]]=parseInt(el.value); vEl.textContent=el.value; updateSliderGrad(el); scheduleTreeRegenerate(); });
-  updateSliderGrad(el);
-});
-
-// Noise type pills
-document.querySelectorAll('.pill').forEach(function(p){
-  p.addEventListener('click',function(){
-    cfg.noiseType=this.dataset.type;
-    document.querySelectorAll('.pill').forEach(function(pp){ pp.classList.remove('active'); });
-    this.classList.add('active');
-    scheduleNoise();
-  });
-});
-
-// Chunk size badges
-document.querySelectorAll('.sz-badge').forEach(function(b){
-  b.addEventListener('click',function(){
-    cfg.chunkIdx=parseInt(this.dataset.idx);
-    document.querySelectorAll('.sz-badge').forEach(function(bb){ bb.classList.remove('active'); });
-    this.classList.add('active');
-  });
-});
-
-// Checkboxes
-$e('cb-water').addEventListener('change',function(){ cfg.showWater=this.checked; });
-$e('cb-wireframe').addEventListener('change',function(){
-  cfg.wireframe=this.checked;
-  if(worldGroup) worldGroup.traverse(function(o){ if(o.material) o.material.wireframe=cfg.wireframe; });
-});
-$e('cb-autorotate').addEventListener('change',function(){ cfg.autoRotate=this.checked; });
-
-// Seed
-$e('s-seed').addEventListener('input',function(){ var v=parseInt(this.value); if(!isNaN(v)&&v>=0) currentSeed=v; });
-
-// Footer buttons
-$e('btn-apply').addEventListener('click',function(){ var v=parseInt($e('s-seed').value); if(!isNaN(v)&&v>=0) currentSeed=v; generate(currentSeed); });
-$e('btn-rand').addEventListener('click',function(){ currentSeed=Math.floor(Math.random()*9999999); $e('s-seed').value=currentSeed; generate(currentSeed); });
-$e('btn-reset').addEventListener('click',function(){
-  Object.assign(cfg,DEFAULTS); currentSeed=9043158;
-  var propMap={water:'waterLvl',maxh:'maxHeight',scale:'scale',oct:'oct',lac:'lac',gain:'gain',dscale:'dscale',dmix:'dmix',rscale:'rscale',rmix:'rmix',basemix:'basemix',exp:'exp',snow:'snowPct',treeline:'treeline',pineline:'pineline',sand:'sandPct',tspacing:'tSpacing',sparsedens:'sparseDens',cloudh:'cloudH',cloudspeed:'cloudSpeed',cloudamt:'cloudAmt',cloudsize:'cloudSize',cloudopa:'cloudOpa',tod:'tod'};
-  Object.keys(propMap).forEach(function(k){
-    var el=$e('s-'+k); if(!el) return;
-    var prop=propMap[k]; el.value=cfg[prop];
-    var vEl=$e('v-'+k); if(vEl) vEl.textContent=cfg[prop];
-    updateSliderGrad(el);
-  });
-  Object.keys(treeSliderMap).forEach(function(k){
-    var el=$e('t-'+k), vEl=$e('tv-'+k);
-    el.value=cfg[treeSliderMap[k]]; vEl.textContent=el.value; updateSliderGrad(el);
-  });
-  document.querySelectorAll('.sz-badge').forEach(function(b){ b.classList.toggle('active',parseInt(b.dataset.idx)===cfg.chunkIdx); });
-  document.querySelectorAll('.pill').forEach(function(p){ p.classList.toggle('active',p.dataset.type===cfg.noiseType); });
-  $e('cb-water').checked=cfg.showWater; $e('cb-wireframe').checked=cfg.wireframe; $e('cb-autorotate').checked=cfg.autoRotate;
-  $e('s-seed').value=currentSeed;
-  updateZoneVis();
-  buildClouds();
-  applyTOD();
-  generate(currentSeed);
-});
-
-// Collapsible sections
-document.querySelectorAll('.sb-section-head').forEach(function(head){
-  head.addEventListener('click',function(){
-    var body=$e('sec-'+this.dataset.sec);
-    var isOpen=body.classList.contains('open');
-    body.classList.toggle('open',!isOpen);
-    body.style.display=isOpen?'none':'block';
-    this.classList.toggle('open',!isOpen);
-  });
-});
-
-// Sidebar toggle
-var sidebarOpen=true;
-var sbtog=$e('sb-toggle');
-sbtog.addEventListener('click',function(){
-  sidebarOpen=!sidebarOpen;
-  $e('sidebar').classList.toggle('collapsed',!sidebarOpen);
-  sbtog.classList.toggle('collapsed',!sidebarOpen);
-  sbtog.innerHTML=sidebarOpen?'&#x276E;':'&#x276F;';
-  setTimeout(onResize,320);
-});
+  var wrap = document.createElement('div');
+  wrap.id = 'minimap-wrap';
+  wrap.className = 'minimap-in-gui';
+  var canvas = document.createElement('canvas');
+  canvas.id = 'noise-preview';
+  canvas.title = 'Terrain preview';
+  wrap.appendChild(canvas);
+  gui.$children.insertBefore(wrap, gui.$children.firstChild);
+}
 
 // Info modal — contributors loaded from contributors/contributors.js
 (function(){
@@ -1290,12 +1261,13 @@ sbtog.addEventListener('click',function(){
 /* =====================================================
    INIT
 ===================================================== */
-$e('s-seed').value=currentSeed;
-updateZoneVis();
+currentSeed = cfg.seed;
+setupGUI();
 onResize(); // sets sky canvas size + draws sky
 applyTOD();
 buildClouds();
 generate(currentSeed);
+drawNoisePreview();
 
 /* =====================================================
    RENDER LOOP
@@ -1324,6 +1296,10 @@ function animate(){
       cm.position.x=wx;
     }
   }
+
+  frameCount++;
+  var now2=performance.now();
+  if(now2-lastFpsTime>=500){ fps=Math.round(frameCount/((now2-lastFpsTime)/1000)); frameCount=0; lastFpsTime=now2; var h=$e('hud-fps'); if(h) h.textContent=fps; }
 
   renderer.render(scene,camera);
 }

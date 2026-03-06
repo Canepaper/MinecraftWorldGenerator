@@ -82,7 +82,11 @@ input[type=number]:focus{border-color:var(--green);}
 .cb-row input[type=checkbox]:checked{background:var(--green);border-color:var(--green);}
 .cb-row input[type=checkbox]:checked::after{content:'✓';position:absolute;top:-1px;left:1px;font-size:9px;color:#0d1117;}
 
-#noise-preview{width:100%;aspect-ratio:1;border:1px solid var(--border);border-radius:2px;image-rendering:pixelated;margin-bottom:9px;display:block;}
+/* lil-gui on the left */
+.lil-gui{left:14px !important;right:auto !important;top:14px !important;}
+
+.minimap-in-gui,#minimap-wrap{background:rgba(7,13,7,0.85);border:1px solid var(--border);border-radius:4px;padding:6px;margin:var(--spacing,4px) 0;display:block;}
+.minimap-in-gui canvas,#noise-preview{display:block;width:100%;height:auto;aspect-ratio:1;border-radius:2px;image-rendering:pixelated;image-rendering:crisp-edges;}
 
 .badge-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px;}
 .sz-badge{padding:3px 6px;font-size:8px;letter-spacing:1px;background:#0a160a;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;border-radius:2px;transition:all 0.15s;user-select:none;}
@@ -132,9 +136,9 @@ input[type=number]:focus{border-color:var(--green);}
 #sb-toggle.collapsed{left:0;}
 
 #hud{position:fixed;top:14px;right:14px;z-index:40;display:flex;flex-direction:column;gap:8px;align-items:flex-end;opacity:0.88;}
-.hud-pill{background:transparent;border:2px solid #000;border-radius:3px;padding:8px 14px;color:#000;font-size:11px;letter-spacing:1px;}
-.hud-pill span{color:#000;}
-.hud-pill kbd{font-family:inherit;padding:1px 4px;border:2px solid #000;border-radius:2px;font-size:9px;}
+.hud-pill{background:transparent;padding:8px 14px;color:#fff;font-size:14px;letter-spacing:1px;text-shadow:0 1px 2px rgba(0,0,0,0.8);}
+.hud-pill span{color:#fff;}
+.hud-pill kbd{font-family:inherit;padding:2px 6px;border-radius:2px;font-size:12px;background:rgba(255,255,255,0.15);}
 
 #loading{position:fixed;inset:0;background:#0d1117;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;transition:opacity 0.4s;}
 #loading .title{color:var(--green);font:bold 18px var(--font);letter-spacing:4px;text-shadow:0 0 20px #4a9a2a66;}
