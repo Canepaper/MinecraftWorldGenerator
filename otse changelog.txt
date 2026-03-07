@@ -1,0 +1,6 @@
+- fixed the deck of clouds geometry and green bottom
+- fixed the gui size max-height to 90% and left and right to 5%
+- the gui now has a happy minecraft theme
+- the gui now starts with categories closed
+- fixed shadow banding on trees
+- i randomized some defaults like seed, chunk size and max height

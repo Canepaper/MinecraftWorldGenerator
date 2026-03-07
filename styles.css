@@ -2,7 +2,8 @@
   --green:#6dba3e; --green-dim:#3a6b42; --green-dk:#1e3422;
   --text:#90c878; --text-dim:#4a7a52;
   --bg:rgba(7,13,7,0.94); --bg-hover:rgba(18,42,14,0.97);
-  --border:#2a5230; --panel-w:288px; --font:'Courier New',monospace;
+  --border:#2a5230; --panel-w:288px;
+  --font:'Monocraft',monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:#0d1117;overflow:hidden;font-family:var(--font);}
@@ -14,6 +15,14 @@ canvas#cv:active{cursor:grabbing;}
 /* time-of-day arc widget */
 #tod-arc-wrap{width:100%;display:flex;justify-content:center;margin-bottom:8px;}
 #tod-arc{border-radius:2px;display:block;}
+
+/* By otse: */
+@font-face {
+  font-family: 'Miracode';
+  src: url('./Miracode.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
 
 /* SIDEBAR */
 #sidebar{
@@ -83,9 +92,36 @@ input[type=number]:focus{border-color:var(--green);}
 .cb-row input[type=checkbox]:checked::after{content:'✓';position:absolute;top:-1px;left:1px;font-size:9px;color:#0d1117;}
 
 /* lil-gui on the left */
-.lil-gui{left:14px !important;right:auto !important;top:14px !important;}
+.lil-gui{left:5% !important;right:auto !important;top:5% !important;}
+.lil-gui.autoPlace { max-height: 90% !important; }
 
-.minimap-in-gui,#minimap-wrap{background:rgba(7,13,7,0.85);border:1px solid var(--border);border-radius:4px;padding:6px;margin:var(--spacing,4px) 0;display:block;}
+/* By otse: */
+/* Force light theme for lil-gui */
+.lil-gui {
+  /* text-transform: lowercase !important; */
+  --background-color: #f8f8f8 !important;
+  --text-color: #2c2c2c !important;
+  --title-background-color: #f8f8f8 !important;
+  --title-text-color: #2c2c2c !important;
+  --widget-color: #c6c6c6 !important;
+  --hover-color: #e7e7e7 !important;
+  --focus-color: #0066cc !important;
+  --number-color: rgb(0, 118, 192) !important;
+  --string-color: #a2a !important;
+  --font: 'Georgia' !important;
+  font-family: 'Miracode' !important;
+  font-size: 13px !important;
+  text-shadow: 2px 2px 0px #30303044; /*, 0 0 0px #4a9a2a44;*/
+  background-color: var(--background-color) !important;
+  color: var(--text-color) !important;
+}
+
+.lil-gui button, .lil-gui input[type="text"], .lil-gui input[type="number"] {
+  font-family: 'Miracode' !important;
+  font-size: 13px !important;
+}
+
+.minimap-in-gui,#minimap-wrap{bbackground:rgba(7,13,7,0.85);bborder:1px solid var(--border);bborder-radius:4px;padding:2px;mmargin:var(--spacing,4px) 0;display:block;}
 .minimap-in-gui canvas,#noise-preview{display:block;width:100%;height:auto;aspect-ratio:1;border-radius:2px;image-rendering:pixelated;image-rendering:crisp-edges;}
 
 .badge-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px;}

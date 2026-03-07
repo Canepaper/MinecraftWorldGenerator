@@ -7,8 +7,15 @@
 var CHUNK_SIZES = [16,32,64,96,128,256,512,1024];
 var TILE = 64; // sub-tile size for streaming mesh build
 
+const chunkSize = Math.floor(Math.random() * 5);
+
 var DEFAULTS = {
   chunkIdx:5, waterLvl:36, maxHeight:128, seed:9043158,
+  // By otse:
+  seed: Math.random() * 1000000,
+  chunkIdx: chunkSize,
+  maxHeight: [64, 80, 96, 112, 128, 160, 192, 256][chunkSize],
+  
   noiseType:'simplex',
   scale:0.2, oct:3, lac:2.15, gain:0.60,
   dscale:3.0, dmix:0, rscale:0.35, rmix:0.52, basemix:0.54, exp:1.96,
@@ -198,6 +205,8 @@ function buildTextures(){
     TEXTURES.pine=mkTex(cv); })();
 
   // Leaf variants
+  // By otse (I muted the colors)
+  
   mkLeafTex('leavesOak',     11, [45,158,30]);
   mkLeafTex('leavesPine',    12, [30,100,25]);
   mkLeafTex('leavesAutumn',  13, [190,55,30]);
@@ -229,8 +238,10 @@ function getMat(texKey, opts){
     map: TEXTURES[texKey],
     transparent: !!(opts&&opts.t),
     opacity: opts&&opts.o!=null ? opts.o : 1,
-    side: opts&&opts.d ? THREE.DoubleSide : THREE.FrontSide,
-    depthWrite: !(opts&&opts.t),
+    // By otse
+    // Outcommented both of these
+    // side: opts&&opts.d ? THREE.DoubleSide : THREE.FrontSide,
+    // depthWrite: !(opts&&opts.t),
     wireframe: cfg.wireframe
   });
   matCache[k]=m; return m;
@@ -892,9 +903,11 @@ function buildClouds(){
         }
 
         // Top (+Y)
-        quad(lx,ly+H2,lz, lx+B,ly+H2,lz, lx+B,ly+H2,lz+B, lx,ly+H2,lz+B, 0,1,0);
+        quad(lx,ly+H2,lz+B, lx+B,ly+H2,lz+B, lx+B,ly+H2,lz, lx,ly+H2,lz, 0,1,0);
         // Bottom (-Y)
-        quad(lx,ly,lz+B, lx+B,ly,lz+B, lx+B,ly,lz, lx,ly,lz, 0,-1,0);
+        // Bottom (-Y)
+        quad(lx,ly,lz, lx+B,ly,lz, lx+B,ly,lz+B, lx,ly,lz+B, 0,-1,0);
+        // Missing bottom quad
         // East (+X) — only if no eastern neighbour
         if(!(gx+1<GW&&grid[(gx+1)+gz*GW]))
           quad(lx+B,ly,lz+B, lx+B,ly,lz, lx+B,ly+H2,lz, lx+B,ly+H2,lz+B, 1,0,0);
@@ -916,9 +929,12 @@ function buildClouds(){
     geo.setAttribute('normal',   new THREE.Float32BufferAttribute(normals,3));
     geo.setIndex(indices);
 
-    var mat=new THREE.MeshLambertMaterial({
-      color:0xffffff, transparent:true, opacity:cfg.cloudOpa,
-      depthWrite:false, side:THREE.FrontSide
+    var mat=new THREE.MeshBasicMaterial({
+      color:0xffffff,
+      transparent:true,
+      opacity:cfg.cloudOpa,
+      depthWrite:false,
+      //side:THREE.FrontSide
     });
 
     var mesh=new THREE.Mesh(geo,mat);
@@ -947,7 +963,7 @@ window.addEventListener('mouseup',function(){ orb.ldown=orb.rdown=false; });
 window.addEventListener('mousemove',function(e){
   var dx=e.clientX-orb.mx, dy=e.clientY-orb.my; orb.mx=e.clientX; orb.my=e.clientY;
   if(orb.ldown){ cfg.autoRotate=false; if(autoRotateController) autoRotateController.updateDisplay(); orb.theta-=dx*0.005; orb.phi=Math.max(0.06,Math.min(Math.PI/2-0.04,orb.phi-dy*0.005)); }
-  if(orb.rdown){ var r=new THREE.Vector3(-Math.cos(orb.theta),0,Math.sin(orb.theta)); orb.target.addScaledVector(r,dx*0.14); orb.target.y=Math.max(-2,Math.min(200,orb.target.y-dy*0.14)); }
+  if(orb.rdown){ var r=new THREE.Vector3(-Math.cos(orb.theta),0,Math.sin(orb.theta)); orb.target.addScaledVector(r,dx*0.14); orb.target.y=Math.max(-2,Math.min(200,orb.target.y+dy*0.14)); }
 });
 cv.addEventListener('wheel',function(e){ orb.radius=Math.max(12,Math.min(700,orb.radius+e.deltaY*0.18)); },{passive:true});
 // Touch
@@ -1166,33 +1182,42 @@ function scheduleTreeRegenerate(){
   treeRegenDebounce=setTimeout(function(){ currentSeed=cfg.seed; generate(currentSeed, {skipLoading:true}); }, 400);
 }
 
+
 var gui, autoRotateController;
 function setupGUI(){
   if(gui) gui.destroy();
-  gui = new lil.GUI({ title: 'Minecraft World Generator' });
+  gui = new lil.GUI({ title: '🏔️ World Gen', theme: 'light', closed: true });
+
+  // I added .close() to all options by default
+  function onNoiseOrTreeChange(){
+    scheduleNoise();
+    scheduleTreeRegenerate();
+  }
 
   var chunkOpts = { 16:0, 32:1, 64:2, 96:3, 128:4, 256:5, 512:6, 1024:7 };
   var chunkFolder = gui.addFolder('Chunk');
   chunkFolder.add(cfg, 'chunkIdx', chunkOpts).name('Size').onChange(function(){ currentSeed=cfg.seed; generate(currentSeed); });
-  chunkFolder.add(cfg, 'waterLvl', 2, 60, 1).name('Water Level').onChange(function(){ updateZoneVis(); scheduleNoise(); scheduleTreeRegenerate(); });
-  chunkFolder.add(cfg, 'maxHeight', 16, 128, 1).name('Max Height').onChange(function(){ updateZoneVis(); scheduleNoise(); scheduleTreeRegenerate(); });
+  chunkFolder.add(cfg, 'waterLvl', 2, 60, 1).name('Water Level').onChange(function(){ updateZoneVis(); onNoiseOrTreeChange(); });
+  chunkFolder.add(cfg, 'maxHeight', 16, 128, 1).name('Max Height').onChange(function(){ updateZoneVis(); onNoiseOrTreeChange(); });
   chunkFolder.add(cfg, 'seed', 0, 9999999, 1).name('Seed');
   chunkFolder.add({ gen: function(){ currentSeed=cfg.seed; generate(currentSeed); } }, 'gen').name('Generate');
   chunkFolder.add({ rand: function(){ cfg.seed=currentSeed=Math.floor(Math.random()*9999999); generate(currentSeed); } }, 'rand').name('Randomise Seed');
   chunkFolder.add({ reset: function(){ Object.assign(cfg,DEFAULTS); currentSeed=cfg.seed; setupGUI(); buildClouds(); applyTOD(); generate(currentSeed); } }, 'reset').name('Reset Defaults');
+  chunkFolder.close();
 
   var noiseFolder = gui.addFolder('Noise');
-  noiseFolder.add(cfg, 'noiseType', { Perlin: 'perlin', Simplex: 'simplex' }).name('Algorithm').onChange(scheduleNoise);
-  noiseFolder.add(cfg, 'scale', 0.1, 5, 0.05).name('Scale').onChange(scheduleNoise);
-  noiseFolder.add(cfg, 'oct', 1, 10, 1).name('Octaves').onChange(scheduleNoise);
-  noiseFolder.add(cfg, 'lac', 1.2, 4, 0.05).name('Lacunarity').onChange(scheduleNoise);
-  noiseFolder.add(cfg, 'gain', 0.1, 0.9, 0.01).name('Persistence').onChange(scheduleNoise);
-  noiseFolder.add(cfg, 'dscale', 0.1, 5, 0.05).name('Detail Scale').onChange(scheduleNoise);
-  noiseFolder.add(cfg, 'dmix', 0, 0.8, 0.01).name('Detail Mix').onChange(scheduleNoise);
-  noiseFolder.add(cfg, 'rscale', 0.1, 4, 0.05).name('Ridge Scale').onChange(scheduleNoise);
-  noiseFolder.add(cfg, 'rmix', 0, 0.6, 0.01).name('Ridge Mix').onChange(scheduleNoise);
-  noiseFolder.add(cfg, 'basemix', 0.1, 1, 0.01).name('Base Mix').onChange(scheduleNoise);
-  noiseFolder.add(cfg, 'exp', 0.3, 3, 0.02).name('Exponent').onChange(scheduleNoise);
+  noiseFolder.add(cfg, 'noiseType', { Perlin: 'perlin', Simplex: 'simplex' }).name('Algorithm').onChange(onNoiseOrTreeChange);
+  noiseFolder.add(cfg, 'scale', 0.1, 5, 0.05).name('Scale').onChange(onNoiseOrTreeChange);
+  noiseFolder.add(cfg, 'oct', 1, 10, 1).name('Octaves').onChange(onNoiseOrTreeChange);
+  noiseFolder.add(cfg, 'lac', 1.2, 4, 0.05).name('Lacunarity').onChange(onNoiseOrTreeChange);
+  noiseFolder.add(cfg, 'gain', 0.1, 0.9, 0.01).name('Persistence').onChange(onNoiseOrTreeChange);
+  noiseFolder.add(cfg, 'dscale', 0.1, 5, 0.05).name('Detail Scale').onChange(onNoiseOrTreeChange);
+  noiseFolder.add(cfg, 'dmix', 0, 0.8, 0.01).name('Detail Mix').onChange(onNoiseOrTreeChange);
+  noiseFolder.add(cfg, 'rscale', 0.1, 4, 0.05).name('Ridge Scale').onChange(onNoiseOrTreeChange);
+  noiseFolder.add(cfg, 'rmix', 0, 0.6, 0.01).name('Ridge Mix').onChange(onNoiseOrTreeChange);
+  noiseFolder.add(cfg, 'basemix', 0.1, 1, 0.01).name('Base Mix').onChange(onNoiseOrTreeChange);
+  noiseFolder.add(cfg, 'exp', 0.3, 3, 0.02).name('Exponent').onChange(onNoiseOrTreeChange);
+  noiseFolder.close();
 
   var treeFolder = gui.addFolder('Trees');
   var zoneVis = document.createElement('div');
@@ -1200,10 +1225,10 @@ function setupGUI(){
   zoneVis.innerHTML = '<div class="zband" data-zone="water" style="width:0%">Water</div><div class="zband" data-zone="sand" style="width:0%">Sand</div><div class="zband" data-zone="grass" style="width:0%">Grass</div><div class="zband" data-zone="pine" style="width:0%">Pine</div><div class="zband" data-zone="trees" style="width:0%">Trees</div><div class="zband" data-zone="snow" style="width:0%">Snow</div>';
   treeFolder.$children.insertBefore(zoneVis, treeFolder.$children.firstChild);
   updateZoneVis();
-  treeFolder.add(cfg, 'snowPct', 40, 98, 1).name('Snow Line %').onChange(function(){ updateZoneVis(); scheduleNoise(); scheduleTreeRegenerate(); });
-  treeFolder.add(cfg, 'treeline', 30, 95, 1).name('Tree Line %').onChange(function(){ updateZoneVis(); scheduleNoise(); scheduleTreeRegenerate(); });
-  treeFolder.add(cfg, 'pineline', 10, 90, 1).name('Pine Line %').onChange(function(){ updateZoneVis(); scheduleNoise(); scheduleTreeRegenerate(); });
-  treeFolder.add(cfg, 'sandPct', 100, 130, 1).name('Sand Line %').onChange(function(){ updateZoneVis(); scheduleNoise(); scheduleTreeRegenerate(); });
+  treeFolder.add(cfg, 'snowPct', 40, 98, 1).name('Snow Line %').onChange(function(){ updateZoneVis(); onNoiseOrTreeChange(); });
+  treeFolder.add(cfg, 'treeline', 30, 95, 1).name('Tree Line %').onChange(function(){ updateZoneVis(); onNoiseOrTreeChange(); });
+  treeFolder.add(cfg, 'pineline', 10, 90, 1).name('Pine Line %').onChange(function(){ updateZoneVis(); onNoiseOrTreeChange(); });
+  treeFolder.add(cfg, 'sandPct', 100, 130, 1).name('Sand Line %').onChange(function(){ updateZoneVis(); onNoiseOrTreeChange(); });
   treeFolder.add(cfg, 'treeOak', 0, 120, 1).name('Oak').onChange(scheduleTreeRegenerate);
   treeFolder.add(cfg, 'treePine', 0, 120, 1).name('Pine').onChange(scheduleTreeRegenerate);
   treeFolder.add(cfg, 'treeAutumn', 0, 120, 1).name('Autumn').onChange(scheduleTreeRegenerate);
@@ -1212,6 +1237,7 @@ function setupGUI(){
   treeFolder.add(cfg, 'treeTropical', 0, 120, 1).name('Tropical').onChange(scheduleTreeRegenerate);
   treeFolder.add(cfg, 'tSpacing', 2, 16, 1).name('Min Spacing').onChange(scheduleTreeRegenerate);
   treeFolder.add(cfg, 'sparseDens', 0, 100, 1).name('Sparse Density %').onChange(scheduleTreeRegenerate);
+  treeFolder.close();
 
   var skyFolder = gui.addFolder('Sky & Clouds');
   skyFolder.add(cfg, 'tod', 0, 24, 0.25).name('Time of Day').onChange(applyTOD);
